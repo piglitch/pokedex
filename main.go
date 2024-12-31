@@ -49,6 +49,11 @@ func main(){
 			description: "Displays the names of 20 location areas in the Pokemon world.",
 			callback: commandMap,
 		},
+		"mapb": {
+			name: "mapb",
+			description: "Shows previous 20 location areas in the pokemon world.",
+			callback: commandMapb,
+		},
 	}
 	preConf := Config{
 		Next: "",
@@ -106,13 +111,45 @@ func commandMap(conf *Config) error{
 	}
 
 	conf.Next = data.Next
+	conf.Previous = data.Previous
+	
+	locations := data.Results
+
+	for _, loc := range locations{
+		fmt.Println(loc.Name)
+	}
+	return nil
+}
+
+func commandMapb(conf *Config) error{
+	pokeUrl := conf.Previous
+	if pokeUrl == "" {
+		fmt.Println("you're on the first page")	
+	}
+	res, err := http.Get(pokeUrl)
+	if err != nil {
+		return fmt.Errorf("unable to fetch!: %s", err)
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != err {
+		return fmt.Errorf("could not read response body: %s", err)
+	}
+	var data LocationAreaResponse
+	err = json.Unmarshal([]byte(body), &data)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal: %s", err)
+	}
+
+	conf.Previous = data.Previous
+	conf.Next = data.Next
 
 	locations := data.Results
 
 	for _, loc := range locations{
 		fmt.Println(loc.Name)
 	}
-	return fmt.Errorf("whatever")
+	return nil
 }
 
 func cleanInput(text string) []string{
