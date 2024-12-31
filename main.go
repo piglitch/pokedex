@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,13 +10,13 @@ import (
 	"strings"
 )
 
-type cliCommand struct {
+type CliCommand struct {
 	name string
 	description string
-	callback func() error
+	callback func(*Config) error
 }
 
-type config struct {
+type Config struct {
 	Next string
 	Previous string
 }
@@ -34,7 +33,7 @@ type LocationAreaResponse struct {
 func main(){
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Pokedex > ")
-	commands := map[string]cliCommand{
+	commands := map[string]CliCommand{
 		"exit": {
 			name: "exit",
 			description: "Exit the Pokedex",
@@ -51,18 +50,19 @@ func main(){
 			callback: commandMap,
 		},
 	}
+	preConf := Config{
+		Next: "",
+		Previous: "",
+	}
 	for scanner.Scan() {
 		userInput := scanner.Text()
 		userInput = strings.ToLower(userInput)
 		found := false
-		mapCalled := false
+
 		for _, cmd := range commands {
 			if cmd.name == userInput {
 				found = true
-				cmd.callback()
-			}
-			if userInput == "map" {
-				mapCalled = true
+				cmd.callback(&preConf)
 			}
 		}
 		if !found {
@@ -71,22 +71,25 @@ func main(){
 	}
 }
 
-func commandExit() error {
+func commandExit(conf *Config) error {
 	fmt.Print("Closing the Pokedex... Goodbye! \n")
 	os.Exit(0)
-	return errors.New("whatever")
+	return nil
 }
 
-func commandHelp() error{
+func commandHelp(conf *Config) error{
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println("help: Displays a help message")
 	fmt.Println("exit: Exit the Pokedex")
-	return errors.New("whatever")
+	return nil
 }
 
-func commandMap() error{
-	pokeUrl := "https://pokeapi.co/api/v2/location-area/?offset=20"
+func commandMap(conf *Config) error{
+	pokeUrl := conf.Next
+	if pokeUrl == "" {
+		pokeUrl = "https://pokeapi.co/api/v2/location-area/"	
+	}
 	res, err := http.Get(pokeUrl)
 	if err != nil {
 		return fmt.Errorf("unable to fetch!: %s", err)
@@ -101,7 +104,11 @@ func commandMap() error{
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal: %s", err)
 	}
+
+	conf.Next = data.Next
+
 	locations := data.Results
+
 	for _, loc := range locations{
 		fmt.Println(loc.Name)
 	}
