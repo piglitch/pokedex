@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"github.com/piglitch/pokedexcli/pokecache"
 )
 
 type CliCommand struct {
@@ -91,37 +92,44 @@ func commandHelp(conf *Config) error{
 }
 
 func commandMap(conf *Config) error{
+	var c *pokecache.Cache
 	pokeUrl := conf.Next
 	if pokeUrl == "" {
 		pokeUrl = "https://pokeapi.co/api/v2/location-area/"	
 	}
-	res, err := http.Get(pokeUrl)
-	if err != nil {
-		return fmt.Errorf("unable to fetch!: %s", err)
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != err {
-		return fmt.Errorf("could not read response body: %s", err)
-	}
-	var data LocationAreaResponse
-	err = json.Unmarshal([]byte(body), &data)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal: %s", err)
-	}
+	entry, exists := c.Get(pokeUrl)
+	if exists {
+		
+	} else {
+		res, err := http.Get(pokeUrl)
+		if err != nil {
+			return fmt.Errorf("unable to fetch!: %s", err)
+		}
+		defer res.Body.Close()
+		body, err := io.ReadAll(res.Body)
+		if err != err {
+			return fmt.Errorf("could not read response body: %s", err)
+		}
+		var data LocationAreaResponse
+		err = json.Unmarshal([]byte(body), &data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal: %s", err)
+		}
 
-	conf.Next = data.Next
-	conf.Previous = data.Previous
-	
-	locations := data.Results
+		conf.Next = data.Next
+		conf.Previous = data.Previous
 
-	for _, loc := range locations{
-		fmt.Println(loc.Name)
+		locations := data.Results
+		
+		for _, loc := range locations{
+			fmt.Println(loc.Name)
+		}
 	}
 	return nil
 }
 
 func commandMapb(conf *Config) error{
+
 	pokeUrl := conf.Previous
 	if pokeUrl == "" {
 		fmt.Println("you're on the first page")	
