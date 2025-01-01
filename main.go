@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
 	"github.com/piglitch/pokedexcli/pokecache"
 )
 
@@ -32,6 +34,7 @@ type LocationAreaResponse struct {
 }
 
 func main(){
+	P := pokecache.NewCache(5 * time.Second) 
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Pokedex > ")
 	commands := map[string]CliCommand{
@@ -48,12 +51,16 @@ func main(){
 		"map": {
 			name: "map",
 			description: "Displays the names of 20 location areas in the Pokemon world.",
-			callback: commandMap,
+			callback:	func(conf *Config) error{
+				return commandMap(conf, P)
+			},
 		},
 		"mapb": {
 			name: "mapb",
 			description: "Shows previous 20 location areas in the pokemon world.",
-			callback: commandMapb,
+			callback: func(conf *Config) error{
+				return commandMapb(conf, P)
+			},
 		},
 	}
 	preConf := Config{
@@ -91,14 +98,17 @@ func commandHelp(conf *Config) error{
 	return nil
 }
 
-func commandMap(conf *Config) error{
-	var P *pokecache.Cache
-	var data LocationAreaResponse
+func commandMap(conf *Config, P *pokecache.Cache) error{
+	
 	pokeUrl := conf.Next
+
 	if pokeUrl == "" {
 		pokeUrl = "https://pokeapi.co/api/v2/location-area/"	
 	}
+	var data LocationAreaResponse
+	fmt.Println(108, pokeUrl)
 	entry, exists := P.Get(pokeUrl)
+	fmt.Println(110, exists)
 	if exists {
 		err := json.Unmarshal([]byte(entry), &data)
 		if err != nil {
@@ -120,7 +130,52 @@ func commandMap(conf *Config) error{
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %s", err)
 		}
-		P.Add(data.Next, body)	
+		P.Add(pokeUrl, body)	
+		fmt.Println("//////////////", len(body), 134)
+	}
+
+	conf.Next = data.Next
+	conf.Previous = data.Previous
+	
+	fmt.Println("pokeUrl: ", pokeUrl, "conf.next: ", conf.Next, "conf.prev: ", conf.Previous, 136)
+	locations := data.Results
+	
+	for _, loc := range locations{
+		fmt.Println(loc.Name)
+	}
+	return nil
+}
+
+func commandMapb(conf *Config, P *pokecache.Cache) error{
+
+	var data LocationAreaResponse
+	pokeUrl := conf.Previous
+	if pokeUrl == "" {
+		fmt.Println("you're on the first page")	
+	}
+	entry, exists := P.Get(pokeUrl)
+	fmt.Println(155, exists)
+	if exists {
+		err := json.Unmarshal([]byte(entry), &data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal: %s", err)
+		}
+	} else {
+		res, err := http.Get(pokeUrl)
+		if err != nil {
+			return fmt.Errorf("unable to fetch!: %s", err)
+		}
+		defer res.Body.Close()
+		body, err := io.ReadAll(res.Body)
+
+		if err != nil {
+			return fmt.Errorf("could not read response body: %s", err)
+		}
+
+		err = json.Unmarshal([]byte(body), &data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal: %s", err)
+		}
 	}
 	conf.Next = data.Next
 	conf.Previous = data.Previous
@@ -131,40 +186,5 @@ func commandMap(conf *Config) error{
 		fmt.Println(loc.Name)
 	}
 	return nil
-}
 
-func commandMapb(conf *Config) error{
-
-	pokeUrl := conf.Previous
-	if pokeUrl == "" {
-		fmt.Println("you're on the first page")	
-	}
-	res, err := http.Get(pokeUrl)
-	if err != nil {
-		return fmt.Errorf("unable to fetch!: %s", err)
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != err {
-		return fmt.Errorf("could not read response body: %s", err)
-	}
-	var data LocationAreaResponse
-	err = json.Unmarshal([]byte(body), &data)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal: %s", err)
-	}
-
-	conf.Previous = data.Previous
-	conf.Next = data.Next
-
-	locations := data.Results
-
-	for _, loc := range locations{
-		fmt.Println(loc.Name)
-	}
-	return nil
-}
-
-func cleanInput(text string) []string{
-	return strings.Split(text, " ")
 }
