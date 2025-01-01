@@ -92,14 +92,18 @@ func commandHelp(conf *Config) error{
 }
 
 func commandMap(conf *Config) error{
-	var c *pokecache.Cache
+	var P *pokecache.Cache
+	var data LocationAreaResponse
 	pokeUrl := conf.Next
 	if pokeUrl == "" {
 		pokeUrl = "https://pokeapi.co/api/v2/location-area/"	
 	}
-	entry, exists := c.Get(pokeUrl)
+	entry, exists := P.Get(pokeUrl)
 	if exists {
-		
+		err := json.Unmarshal([]byte(entry), &data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal: %s", err)
+		}
 	} else {
 		res, err := http.Get(pokeUrl)
 		if err != nil {
@@ -107,23 +111,24 @@ func commandMap(conf *Config) error{
 		}
 		defer res.Body.Close()
 		body, err := io.ReadAll(res.Body)
-		if err != err {
+
+		if err != nil {
 			return fmt.Errorf("could not read response body: %s", err)
 		}
-		var data LocationAreaResponse
+
 		err = json.Unmarshal([]byte(body), &data)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %s", err)
 		}
+		P.Add(data.Next, body)	
+	}
+	conf.Next = data.Next
+	conf.Previous = data.Previous
 
-		conf.Next = data.Next
-		conf.Previous = data.Previous
-
-		locations := data.Results
-		
-		for _, loc := range locations{
-			fmt.Println(loc.Name)
-		}
+	locations := data.Results
+	
+	for _, loc := range locations{
+		fmt.Println(loc.Name)
 	}
 	return nil
 }
