@@ -34,7 +34,7 @@ type LocationAreaResponse struct {
 }
 
 func main(){
-	P := pokecache.NewCache(5 * time.Second) 
+	P := pokecache.NewCache(120 * time.Second) 
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Pokedex > ")
 	commands := map[string]CliCommand{

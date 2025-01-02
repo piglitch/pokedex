@@ -19,10 +19,7 @@ func NewCache(interval time.Duration) *Cache{
 	cache := &Cache{
 		data: make(map[string]cacheEntry),
 	}
-	go func() {
-		cache.reapLoop()
-		time.Sleep(interval)
-	}()
+	go cache.reapLoop(interval)
 	return cache;
 }
 
@@ -37,13 +34,10 @@ func (C *Cache) Add(key string, val []byte) {
 }
 
 func (C *Cache) Get(key string) ([]byte, bool){
-
 	C.mu.Lock()
 	defer C.mu.Unlock()
 
-
 	entry, exists := C.data[key]
-
 	if !exists {
 		var dat []byte
 		return dat, false
@@ -51,11 +45,15 @@ func (C *Cache) Get(key string) ([]byte, bool){
 	return entry.val, true
 }
 
-func (C *Cache) reapLoop() {
-	for key, entry := range C.data{
-		age := time.Since(entry.createdAt) 
-		if age > 5 * time.Second {
-			delete(C.data, key)
-		}
-	}
+func (C *Cache) reapLoop(interval time.Duration) {
+    for {
+        time.Sleep(interval) 
+        C.mu.Lock()
+        for key, entry := range C.data {
+            if time.Since(entry.createdAt) > 5*time.Second {
+                delete(C.data, key)
+            }
+        }
+        C.mu.Unlock()
+    }
 }
