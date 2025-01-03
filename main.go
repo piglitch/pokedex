@@ -62,6 +62,13 @@ func main(){
 				return commandMapb(conf, P)
 			},
 		},
+		"explore": {
+			name: "explore",
+			description: "Shows pokemons of a certain location area.",
+			callback: func(conf *Config) error{
+				return commandMapb(conf, P)
+			},
+		},
 	}
 	preConf := Config{
 		Next: "",
@@ -106,9 +113,7 @@ func commandMap(conf *Config, P *pokecache.Cache) error{
 		pokeUrl = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"	
 	}
 	var data LocationAreaResponse
-	fmt.Println(109, pokeUrl)
 	entry, exists := P.Get(pokeUrl)
-	fmt.Println(111, exists)
 	if exists {
 		err := json.Unmarshal([]byte(entry), &data)
 		if err != nil {
@@ -132,13 +137,10 @@ func commandMap(conf *Config, P *pokecache.Cache) error{
 		}
 		P.Add(pokeUrl, body)	
 	}
-	fmt.Println("//////////////////")
-	fmt.Println(135, pokeUrl)
-	fmt.Println("//////////////////")
+
 	conf.Next = data.Next
 	conf.Previous = data.Previous
 	
-	fmt.Println("pokeUrl: ", pokeUrl, "conf.next: ", conf.Next, "conf.prev: ", conf.Previous, 136)
 	locations := data.Results
 	
 	for _, loc := range locations{
@@ -147,7 +149,7 @@ func commandMap(conf *Config, P *pokecache.Cache) error{
 	return nil
 }
 
-func commandMapb(conf *Config, P *pokecache.Cache) error{
+func commandMapb(conf *Config, P *pokecache.Cache) error {
 
 	var data LocationAreaResponse
 	pokeUrl := conf.Previous
@@ -155,19 +157,14 @@ func commandMapb(conf *Config, P *pokecache.Cache) error{
 		fmt.Println("you're on the first page")	
 	}
 	entry, exists := P.Get(pokeUrl)
-	fmt.Println(157, exists)
 	if exists {
 		err := json.Unmarshal([]byte(entry), &data)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %s", err)
 		}
 	 } 
-	 fmt.Println("//////////////////")
-	 fmt.Println(167, pokeUrl)
-	 fmt.Println("//////////////////")
 	conf.Next = data.Next
 	conf.Previous = data.Previous
-	fmt.Println(167, data.Previous)
 
 	locations := data.Results
 	
@@ -175,5 +172,9 @@ func commandMapb(conf *Config, P *pokecache.Cache) error{
 		fmt.Println(loc.Name)
 	}
 	return nil
+}
 
+func commandExplore(C *Config, P *pokecache.Cache) error {
+	exploreUrl := "https://pokeapi.co/api/v2/location/" + 
+	res, err := http.Get() 	
 }
