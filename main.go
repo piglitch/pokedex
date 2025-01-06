@@ -16,10 +16,33 @@ import (
 
 type Pokemon struct {
 	name string
+	height int
+	weight int
+	hp int
+	attack int
+	defense int
+	specialAttack int
+	specialDefense int
+	speed int
+	types []string
 }
 
 type PokemonResponseByName struct {
+	Name string `json:"name"`
 	BaseExp int `json:"base_experience"`
+	Stats []struct {
+		BaseStat int `json:"base_stat"`
+		Stat struct {
+			Name string `json:"name"`
+		} `json:"stat"`
+	} `json:"stats"`
+	Types []struct{
+		PokeType struct{
+			Name string `json:"name"`
+		} `json:"type"`
+	} `json:"types"`
+	Weight int `json:"weight"`
+	Height int `json:"height"`
 }
 
 type CliCommand struct {
@@ -93,6 +116,13 @@ func main(){
 			description: "Attempts to catch a pokemon",
 			callback: func (conf *Config, userInputSlice []string) error {
 				return commandCatch(conf, P, userInputSlice, pokemons)
+			},
+		},
+		"inspect": {
+			name: "inspect",
+			description: "Inspects a pokemon once caught",
+			callback: func(conf *Config, userInputSlice []string) error {
+				return commandInspect(conf, P, userInputSlice, pokemons)
 			},
 		},
 	}
@@ -270,12 +300,80 @@ func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string, pokemo
 	pokeExp := data.BaseExp
 	chances := rand.Float64() * 2
 
+	var hp int
+	var attack int
+	var defense int
+	var specialAttack int
+	var specialDefense int
+	var speed int
+	pokemonTypes := []string{}
+	for _, stats := range data.Stats {
+		if stats.Stat.Name == "hp" {
+			hp = stats.BaseStat
+		}
+		if stats.Stat.Name == "attack" {
+			attack = stats.BaseStat
+		}
+		if stats.Stat.Name == "defense" {
+			defense = stats.BaseStat
+		}
+		if stats.Stat.Name == "special-attack" {
+			specialAttack = stats.BaseStat
+		}
+		if stats.Stat.Name == "special-defense" {
+			specialDefense = stats.BaseStat
+		}
+		if stats.Stat.Name == "speed" {
+			speed = stats.BaseStat
+		}
+	}
+
+	for _, types := range data.Types {
+		pokemonTypes = append(pokemonTypes, types.PokeType.Name)
+	}
+
 	if chances * 100 >= float64(pokeExp) {
 		fmt.Printf("%s was caught \n", userInputSlice[1])
-		pokemons[userInputSlice[1]] = Pokemon{name: userInputSlice[1]}
+		pokemons[userInputSlice[1]] = Pokemon{
+			name: data.Name,
+			height: data.Height,
+			weight: data.Weight,
+			hp: hp,
+			attack: attack,
+			defense: defense,
+			specialAttack: specialAttack,
+			specialDefense: specialDefense,
+			speed: speed,
+			types: pokemonTypes,
+		}
 	} else {
 		fmt.Printf("%s escaped \n", userInputSlice[1])
 	}
-	fmt.Printf("caught pokemons: %s \n", pokemons)
+	fmt.Printf("caught pokemons: %v \n", pokemons)
+	return nil
+}
+
+func commandInspect (_ *Config, _ *pokecache.Cache, userInputSlice []string, pokemons map[string]Pokemon) error {
+	pokemon, exists := pokemons[userInputSlice[1]]
+	if !exists {
+		fmt.Printf("You haven't caught %s. You have to catch a pokemon to inspect it. \n", userInputSlice[1])
+		return nil
+	}
+	fmt.Printf("Name: %s\n", pokemon.name)
+	fmt.Printf("Height: %d\n", pokemon.height)
+	fmt.Printf("Weight: %d\n", pokemon.weight)
+	fmt.Println("Stats: ")
+	fmt.Printf("	-hp: %d\n", pokemon.hp)
+	fmt.Printf("	-attack: %d\n", pokemon.attack)
+	fmt.Printf("	-defense: %d\n", pokemon.defense)
+	fmt.Printf("	-special-attack: %d\n", pokemon.specialAttack)
+	fmt.Printf("	-special-defense: %d\n", pokemon.specialDefense)
+	fmt.Printf("	-speed: %d\n", pokemon.speed)
+	fmt.Println("Types: ")
+	
+	for _, pokeType := range pokemon.types {
+		fmt.Printf("	- %s \n", pokeType)	
+	}
+
 	return nil
 }
