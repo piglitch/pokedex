@@ -53,6 +53,7 @@ type PokemonResponse struct {
 
 func main(){
 	P := pokecache.NewCache(120 * time.Second) 
+	pokemons := make(map[string]Pokemon)
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Pokedex > ")
 	commands := map[string]CliCommand{
@@ -70,28 +71,28 @@ func main(){
 			name: "map",
 			description: "Displays the names of 20 location areas in the Pokemon world.",
 			callback:	func(conf *Config, userInputSlice []string) error{
-				return commandMap(conf, P, userInputSlice)
+				return commandMap(conf, P, userInputSlice, pokemons)
 			},
 		},
 		"mapb": {
 			name: "mapb",
 			description: "Shows previous 20 location areas in the pokemon world.",
 			callback: func(conf *Config, userInputSlice []string) error{
-				return commandMapb(conf, P, userInputSlice)
+				return commandMapb(conf, P, userInputSlice, pokemons)
 			},
 		},
 		"explore": {
 			name: "explore",
 			description: "Shows pokemons of a certain location area.",
 			callback: func(conf *Config, userInputSlice []string) error{
-				return commandExplore(conf, P, userInputSlice)
+				return commandExplore(conf, P, userInputSlice, pokemons)
 			},
 		},
 		"catch": {
 			name: "catch",
 			description: "Attempts to catch a pokemon",
 			callback: func (conf *Config, userInputSlice []string) error {
-				return commandCatch(conf, P, userInputSlice)
+				return commandCatch(conf, P, userInputSlice, pokemons)
 			},
 		},
 	}
@@ -131,7 +132,7 @@ func commandHelp(conf *Config, userInputSlice []string) error{
 	return nil
 }
 
-func commandMap(conf *Config, P *pokecache.Cache, _ []string) error {
+func commandMap(conf *Config, P *pokecache.Cache, _ []string, _ map[string]Pokemon) error {
 	
 	pokeUrl := conf.Next
 
@@ -175,7 +176,7 @@ func commandMap(conf *Config, P *pokecache.Cache, _ []string) error {
 	return nil
 }
 
-func commandMapb(conf *Config, P *pokecache.Cache, _ []string) error {
+func commandMapb(conf *Config, P *pokecache.Cache, _ []string, _ map[string]Pokemon) error {
 
 	var data LocationAreaResponse
 	pokeUrl := conf.Previous
@@ -200,7 +201,7 @@ func commandMapb(conf *Config, P *pokecache.Cache, _ []string) error {
 	return nil
 }
 
-func commandExplore(_ *Config, P *pokecache.Cache, userInputSlice []string) error {
+func commandExplore(_ *Config, P *pokecache.Cache, userInputSlice []string, _ map[string]Pokemon) error {
 
 	var data PokemonResponse
 	locUrl := "https://pokeapi.co/api/v2/location-area/" 
@@ -237,9 +238,8 @@ func commandExplore(_ *Config, P *pokecache.Cache, userInputSlice []string) erro
 	return nil
 }
 
-func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string) error {
+func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string, pokemons map[string]Pokemon) error {
 	fmt.Printf("Throwing a Pokeball at %s \n", userInputSlice[1])
-	pokemons := make(map[string]Pokemon)
 	pokemonUrl := "https://pokeapi.co/api/v2/pokemon/"
 	fulUrl := pokemonUrl + userInputSlice[1]
 
@@ -264,7 +264,8 @@ func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string) error 
 		fmt.Printf("%s was caught \n", userInputSlice[1])
 		pokemons[userInputSlice[1]] = Pokemon{name: userInputSlice[1]}
 	} else {
-		fmt.Printf("%s escaped", userInputSlice[1])
+		fmt.Printf("%s escaped \n", userInputSlice[1])
 	}
+	fmt.Printf("caught pokemons: %s \n", pokemons)
 	return nil
 }
