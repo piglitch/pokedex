@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"math/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,10 +10,17 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	"github.com/piglitch/pokedexcli/pokecache"
 )
 
+type Pokemon struct {
+	name string
+}
 
+type PokemonResponseByName struct {
+	BaseExp int `json:"base_experience"`
+}
 
 type CliCommand struct {
 	name string
@@ -123,7 +131,7 @@ func commandHelp(conf *Config, userInputSlice []string) error{
 	return nil
 }
 
-func commandMap(conf *Config, P *pokecache.Cache, userInputSlice []string) error {
+func commandMap(conf *Config, P *pokecache.Cache, _ []string) error {
 	
 	pokeUrl := conf.Next
 
@@ -167,7 +175,7 @@ func commandMap(conf *Config, P *pokecache.Cache, userInputSlice []string) error
 	return nil
 }
 
-func commandMapb(conf *Config, P *pokecache.Cache, userInputSlice []string) error {
+func commandMapb(conf *Config, P *pokecache.Cache, _ []string) error {
 
 	var data LocationAreaResponse
 	pokeUrl := conf.Previous
@@ -192,7 +200,7 @@ func commandMapb(conf *Config, P *pokecache.Cache, userInputSlice []string) erro
 	return nil
 }
 
-func commandExplore(C *Config, P *pokecache.Cache, userInputSlice []string) error {
+func commandExplore(_ *Config, P *pokecache.Cache, userInputSlice []string) error {
 
 	var data PokemonResponse
 	locUrl := "https://pokeapi.co/api/v2/location-area/" 
@@ -229,7 +237,34 @@ func commandExplore(C *Config, P *pokecache.Cache, userInputSlice []string) erro
 	return nil
 }
 
-func commandCatch(C *Config, P *pokecache.Cache, userInputSlice []string) error {
-	
+func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string) error {
+	fmt.Printf("Throwing a Pokeball at %s \n", userInputSlice[1])
+	pokemons := make(map[string]Pokemon)
+	pokemonUrl := "https://pokeapi.co/api/v2/pokemon/"
+	fulUrl := pokemonUrl + userInputSlice[1]
+
+	res, err := http.Get(fulUrl)
+	if err != nil {
+		return fmt.Errorf("failed fetching pokemon: %s", err)
+	}
+	defer res.Body.Close()
+	var data PokemonResponseByName
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %s", err)
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal response body: %s", err)
+	}
+	pokeExp := data.BaseExp
+	chances := rand.Float64() * 2
+
+	if chances * 100 >= float64(pokeExp) {
+		fmt.Printf("%s was caught \n", userInputSlice[1])
+		pokemons[userInputSlice[1]] = Pokemon{name: userInputSlice[1]}
+	} else {
+		fmt.Printf("%s escaped", userInputSlice[1])
+	}
 	return nil
 }
