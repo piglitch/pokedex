@@ -125,6 +125,13 @@ func main(){
 				return commandInspect(conf, P, userInputSlice, pokemons)
 			},
 		},
+		"pokedex": {
+			name: "pokedex",
+			description: "Shows the pokemons you have caught",
+			callback: func(conf *Config, userInputSlice []string) error {
+				return commandPokedex(conf, P, userInputSlice, pokemons)
+			},
+		},
 	}
 	preConf := Config{
 		Next: "",
@@ -154,13 +161,22 @@ func commandExit(conf *Config, userInputSlice []string) error {
 	return nil
 }
 
-func commandHelp(conf *Config, userInputSlice []string) error{
+func commandHelp(conf *Config, userInputSlice []string) error {
 	fmt.Println("Welcome to the Pokedex!")
-	fmt.Println("Usage:")
+	fmt.Println("Available commands:")
+
 	fmt.Println("help: Displays a help message")
 	fmt.Println("exit: Exit the Pokedex")
+	fmt.Println("map: Displays the names of 20 location areas in the Pokemon world.")
+	fmt.Println("mapb: Shows previous 20 location areas in the pokemon world.")
+	fmt.Println("explore <location>: Shows pokemons of a certain location area.")
+	fmt.Println("catch <pokemon>: Attempts to catch a pokemon")
+	fmt.Println("inspect <pokemon>: Inspects a pokemon once caught")
+	fmt.Println("pokedex: Shows the pokemons you have caught")
+
 	return nil
 }
+
 
 func commandMap(conf *Config, P *pokecache.Cache, _ []string, _ map[string]Pokemon) error {
 	
@@ -375,5 +391,15 @@ func commandInspect (_ *Config, _ *pokecache.Cache, userInputSlice []string, pok
 		fmt.Printf("	- %s \n", pokeType)	
 	}
 
+	return nil
+}
+
+func commandPokedex (_ *Config, _ *pokecache.Cache, _ []string, pokemons map[string]Pokemon) error {
+	if len(pokemons) < 1 {
+		fmt.Println("You have not caught any pokemons yet")
+	}
+	for _, pokemon := range pokemons {
+		fmt.Printf("	- %s \n", pokemon.name)
+	}
 	return nil
 }
