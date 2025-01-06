@@ -9,14 +9,15 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"github.com/piglitch/pokedexcli/pokecache"
 )
+
+
 
 type CliCommand struct {
 	name string
 	description string
-	callback func(*Config) error
+	callback func(*Config, []string) error
 }
 
 type Config struct {
@@ -31,6 +32,15 @@ type LocationAreaResponse struct {
 		Name string `json:"name"`
 		URL  string `json:"url"`
 	} `json:"results"`
+}
+
+type PokemonResponse struct {
+	PokeEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"pokemon"`
+	} `json:"pokemon_encounters"`
 }
 
 func main(){
@@ -51,22 +61,29 @@ func main(){
 		"map": {
 			name: "map",
 			description: "Displays the names of 20 location areas in the Pokemon world.",
-			callback:	func(conf *Config) error{
-				return commandMap(conf, P)
+			callback:	func(conf *Config, userInputSlice []string) error{
+				return commandMap(conf, P, userInputSlice)
 			},
 		},
 		"mapb": {
 			name: "mapb",
 			description: "Shows previous 20 location areas in the pokemon world.",
-			callback: func(conf *Config) error{
-				return commandMapb(conf, P)
+			callback: func(conf *Config, userInputSlice []string) error{
+				return commandMapb(conf, P, userInputSlice)
 			},
 		},
 		"explore": {
 			name: "explore",
 			description: "Shows pokemons of a certain location area.",
-			callback: func(conf *Config) error{
-				return commandMapb(conf, P)
+			callback: func(conf *Config, userInputSlice []string) error{
+				return commandExplore(conf, P, userInputSlice)
+			},
+		},
+		"catch": {
+			name: "catch",
+			description: "Attempts to catch a pokemon",
+			callback: func (conf *Config, userInputSlice []string) error {
+				return commandCatch(conf, P, userInputSlice)
 			},
 		},
 	}
@@ -77,12 +94,13 @@ func main(){
 	for scanner.Scan() {
 		userInput := scanner.Text()
 		userInput = strings.ToLower(userInput)
+		userInputSlice := strings.SplitN(userInput, " ", 2)
 		found := false
 
 		for _, cmd := range commands {
-			if cmd.name == userInput {
+			if cmd.name == userInputSlice[0] {
 				found = true
-				cmd.callback(&preConf)
+				cmd.callback(&preConf, userInputSlice)
 			}
 		}
 		if !found {
@@ -91,13 +109,13 @@ func main(){
 	}
 }
 
-func commandExit(conf *Config) error {
+func commandExit(conf *Config, userInputSlice []string) error {
 	fmt.Print("Closing the Pokedex... Goodbye! \n")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(conf *Config) error{
+func commandHelp(conf *Config, userInputSlice []string) error{
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println("help: Displays a help message")
@@ -105,7 +123,7 @@ func commandHelp(conf *Config) error{
 	return nil
 }
 
-func commandMap(conf *Config, P *pokecache.Cache) error{
+func commandMap(conf *Config, P *pokecache.Cache, userInputSlice []string) error {
 	
 	pokeUrl := conf.Next
 
@@ -143,13 +161,13 @@ func commandMap(conf *Config, P *pokecache.Cache) error{
 	
 	locations := data.Results
 	
-	for _, loc := range locations{
+	for _, loc := range locations {
 		fmt.Println(loc.Name)
 	}
 	return nil
 }
 
-func commandMapb(conf *Config, P *pokecache.Cache) error {
+func commandMapb(conf *Config, P *pokecache.Cache, userInputSlice []string) error {
 
 	var data LocationAreaResponse
 	pokeUrl := conf.Previous
@@ -174,7 +192,44 @@ func commandMapb(conf *Config, P *pokecache.Cache) error {
 	return nil
 }
 
-func commandExplore(C *Config, P *pokecache.Cache) error {
-	exploreUrl := "https://pokeapi.co/api/v2/location/" + 
-	res, err := http.Get() 	
+func commandExplore(C *Config, P *pokecache.Cache, userInputSlice []string) error {
+
+	var data PokemonResponse
+	locUrl := "https://pokeapi.co/api/v2/location-area/" 
+	fullUrl := locUrl + userInputSlice[1]
+
+	entry, exists := P.Get(fullUrl)
+	if exists {
+		err := json.Unmarshal(entry, &data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal: %s", err)
+		}
+
+	} else {
+		res, err := http.Get(fullUrl) 	
+		if err != nil {
+			return fmt.Errorf("failed to fetch %s", err)
+		}
+		defer res.Body.Close()
+	
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("failed reading response body: %s", err)
+		}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal response body: %s", err)
+		}
+		P.Add(fullUrl, body)
+	}
+	
+	for _, encounter := range data.PokeEncounters {
+		fmt.Println(encounter.Pokemon.Name)
+	}
+	return nil
+}
+
+func commandCatch(C *Config, P *pokecache.Cache, userInputSlice []string) error {
+	
+	return nil
 }

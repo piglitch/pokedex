@@ -15,6 +15,10 @@ type Cache struct{
 	mu sync.Mutex
 }
 
+type User struct {
+	
+}
+
 func NewCache(interval time.Duration) *Cache{
 	cache := &Cache{
 		data: make(map[string]cacheEntry),
