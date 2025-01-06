@@ -239,7 +239,12 @@ func commandExplore(_ *Config, P *pokecache.Cache, userInputSlice []string, _ ma
 }
 
 func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string, pokemons map[string]Pokemon) error {
-	fmt.Printf("Throwing a Pokeball at %s \n", userInputSlice[1])
+	_, exists := pokemons[userInputSlice[1]]
+	if exists {
+		fmt.Printf("You have already caught %s \n", userInputSlice[1])
+		return nil
+	}
+	fmt.Printf("Throwing a Pokeball at %s... \n", userInputSlice[1])
 	pokemonUrl := "https://pokeapi.co/api/v2/pokemon/"
 	fulUrl := pokemonUrl + userInputSlice[1]
 
@@ -250,6 +255,11 @@ func commandCatch(_ *Config, _ *pokecache.Cache, userInputSlice []string, pokemo
 	defer res.Body.Close()
 	var data PokemonResponseByName
 	body, err := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		fmt.Printf("%s is not a pokemon: %d\n", userInputSlice[1], res.StatusCode)
+		return nil
+	}
+
 	if err != nil {
 		return fmt.Errorf("error reading response body: %s", err)
 	}
